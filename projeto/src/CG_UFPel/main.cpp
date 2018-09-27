@@ -99,7 +99,7 @@ int main()
         // -----
         processInput(window);
         if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
-            ourModel.Translate(glm::vec3(0.5, 0.5, 0.5), 3, currentFrame);
+            ourModel.Translate(glm::vec3(0.5, 0.5, 0.5), 3);
         if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
             ourModel.Scale(glm::vec3(0.5, 0.5, 0.5), 5, currentFrame);
         if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)

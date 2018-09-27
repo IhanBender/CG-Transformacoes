@@ -31,6 +31,7 @@ struct rotation {
     float inicialTime;  // Time that the trasformation began
     float endingTime;   // Time for the transformation to end
     glm::vec3 axis;
+    bool started;
 };
 
 struct rotationTuple {
@@ -43,6 +44,7 @@ struct translation {
     glm::vec3 inicialPosition;
     float inicialTime;  // Time that the trasformation began
     float endingTime;   // Time for the transformation to end
+    bool started;
 };
 
 struct scale {
@@ -50,6 +52,7 @@ struct scale {
     glm::vec3 inicialScale;
     float inicialTime;  // Time that the trasformation began
     float endingTime;   // Time for the transformation to end
+    bool started;
 };
 
 class Model 
@@ -78,13 +81,12 @@ public:
     }
     
     // Translates model from current position to new Position in a certain time in seconds
-    void Translate(glm::vec3 nPos, float timeTaken, float currTime){
+    void Translate(glm::vec3 nPos, float timeTaken){
         // If time == 0 then Translates instantly
         translation t;
         t.newPosition = nPos;
-        t.inicialTime = currTime;
-        t.endingTime = timeTaken + currTime;
-        t.inicialPosition = this->currPosition;
+        t.endingTime = timeTaken;
+        t.started = false;
         translations.push(t);
 
     }
@@ -93,10 +95,11 @@ public:
     void Scale(glm::vec3 nScale, float timeTaken, float currTime){
         // If time == 0 then scales instantly
         scale s;
-        s.inicialTime = currTime;
-        s.endingTime = currTime + timeTaken;
+        //s.inicialTime = currTime;
+        s.endingTime = timeTaken;
         s.scale = nScale;
         s.inicialScale = this->currScale;
+        s.started = false;
         scales.push(s);
     }
 
@@ -105,10 +108,11 @@ public:
         float PI = 3.14159265359;
         rotation r;
         r.inicialTime = currTime;
-        r.endingTime = currTime + timeTaken;
-        r.inicialAngle = currAngle;
-        r.finalAngle = angle * PI / 180;
+        r.endingTime = timeTaken;
+        //r.inicialAngle = currAngle;
+        r.finalAngle = angle * PI / 180;    // Converts from degrees to radians
         r.axis = axis;
+        r.started = false;
         rotations.push(r);
     }
 
@@ -148,24 +152,45 @@ private:
     queue<scale> scales;
     queue<rotation> rotations;
 
+    translation currTranslating;
+    scale currScaling;
+    rotation currRotating;
+
     glm::vec3 translateVector(){
-        // if there are none translations, current position is returned
-        if(!translations.empty()){
-            translation t = translations.front();
-            float percentage = (this->currTime - t.inicialTime) / (t.endingTime - t.inicialTime);       // Percentage of trasformation that has to be done
-            // if should already had transformed, do it and pops from the queue
-            if(percentage >= 1){
-                translations.pop();
-                this->currPosition = t.newPosition;
+        
+        if(!currTranslating.started){
+            if(!translations.empty()){
+                currTranslating = translations.front();
+                currTranslating.started = true;
+                currTranslating.inicialPosition = currPosition;
+                currTranslating.inicialTime = currTime;
+                currTranslating.endingTime += currTime;
+                translations.pop(); 
             }
             else {
-                // otherwise, calculate how much must be translate and does it (refreshing the currPosition)
-                this->currPosition.x = t.inicialPosition.x + percentage * (t.newPosition.x - t.inicialPosition.x);
-                this->currPosition.y = t.inicialPosition.y + percentage * (t.newPosition.y - t.inicialPosition.y);
-                this->currPosition.z = t.inicialPosition.z + percentage * (t.newPosition.z - t.inicialPosition.z);
+                return currPosition;
             }
         }
+
+        // if reached this line, has a currTranslation going on
+
+        // Percentage of trasformation that has to be done
+        translation t = currTranslating;
+        float percentage = (this->currTime - t.inicialTime) / (t.endingTime - t.inicialTime);
+        // if should already had transformed, do it and pops from the queue
+        if(percentage >= 1){
+            translations.pop();
+            currTranslating.started = false;
+            this->currPosition = t.newPosition;
+        }
+        else {
+            // otherwise, calculate how much must be translate and does it (refreshing the currPosition)
+            this->currPosition.x = t.inicialPosition.x + percentage * (t.newPosition.x - t.inicialPosition.x);
+            this->currPosition.y = t.inicialPosition.y + percentage * (t.newPosition.y - t.inicialPosition.y);
+            this->currPosition.z = t.inicialPosition.z + percentage * (t.newPosition.z - t.inicialPosition.z);
+        }
         return currPosition;
+
     }
 
     rotationTuple rotationData(){
