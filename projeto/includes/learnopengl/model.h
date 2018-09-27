@@ -26,10 +26,16 @@ using namespace std;
 unsigned int TextureFromFile(const char *path, const string &directory, bool gamma = false);
 
 struct rotation {
-    float finalAngle;
     float inicialAngle;
+    float finalAngle;
     float inicialTime;  // Time that the trasformation began
     float endingTime;   // Time for the transformation to end
+    glm::vec3 axis;
+};
+
+struct rotationTuple {
+    float angle;
+    glm::vec3 axis;
 };
 
 struct translation {
@@ -95,8 +101,15 @@ public:
     }
 
     // Rotates model in a certain angle, in a certain time in seconds around a specific axis
-    void RotateAx(float angle, float time, glm::vec3 axis){
-
+    void RotateAx(float angle, float timeTaken, float currTime, glm::vec3 axis){
+        float PI = 3.14159265359;
+        rotation r;
+        r.inicialTime = currTime;
+        r.endingTime = currTime + timeTaken;
+        r.inicialAngle = currAngle;
+        r.finalAngle = angle * PI / 180;
+        r.axis = axis;
+        rotations.push(r);
     }
 
     // Returns a trasformation matrix to be used on model movements and refreshes model's attributes
@@ -108,7 +121,8 @@ public:
         // Translate
         transform = glm::translate(transform, translateVector());
         // Rotate
-        /* Code */
+        rotationTuple rt = rotationData();
+        transform = glm::rotate(transform, rt.angle, rt.axis);
         // Scale
         transform = glm::scale(transform, scaleVector());
 
@@ -126,8 +140,8 @@ private:
     // Must store current position and scale
     glm::vec3 currPosition = glm::vec3(0);
     glm::vec3 currScale = glm::vec3(1.0);
-    float currAngle;
-    glm::vec3 axis;
+    float currAngle = 0;
+    glm::vec3 axis = glm::vec3(0, 1.0, 0);
     float currTime;
 
     queue<translation> translations;
@@ -152,6 +166,29 @@ private:
             }
         }
         return currPosition;
+    }
+
+    rotationTuple rotationData(){
+        rotationTuple rt;
+
+        if(!rotations.empty()){
+            rotation r = rotations.front();
+            // Percentage of trasformation that has to be done
+            this->axis = r.axis;
+
+            float percentage = (this->currTime - r.inicialTime) / (r.endingTime - r.inicialTime);
+            if(percentage >= 1){
+                rotations.pop();
+                this->currAngle = r.finalAngle;
+            }
+            else {
+                this->currAngle = r.inicialAngle + percentage * (r.finalAngle - r.inicialAngle);
+            }
+        }
+
+        rt.angle = currAngle;
+        rt.axis = axis;
+        return rt;
     }
 
     glm::vec3 scaleVector(){

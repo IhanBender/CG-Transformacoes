@@ -101,8 +101,11 @@ int main()
         if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
             ourModel.Translate(glm::vec3(0.5, 0.5, 0.5), 3, currentFrame);
         if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-            ourModel.Scale(glm::vec3(0.5, 0.5, 0.5), 0, currentFrame);
-
+            ourModel.Scale(glm::vec3(0.5, 0.5, 0.5), 5, currentFrame);
+        if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
+            ourModel.RotateAx(60.0, 5, currentFrame, glm::vec3(1, 1, 0));
+        if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
+            ourModel.RotateAx(180.0, 5, currentFrame, glm::vec3(0, 1, 0));
 
         // render
         // ------
