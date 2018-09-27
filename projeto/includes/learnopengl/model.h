@@ -26,7 +26,8 @@ using namespace std;
 unsigned int TextureFromFile(const char *path, const string &directory, bool gamma = false);
 
 struct rotation {
-    float angle;
+    float finalAngle;
+    float inicialAngle;
     float inicialTime;  // Time that the trasformation began
     float endingTime;   // Time for the transformation to end
 };
@@ -40,6 +41,7 @@ struct translation {
 
 struct scale {
     glm::vec3 scale;
+    glm::vec3 inicialScale;
     float inicialTime;  // Time that the trasformation began
     float endingTime;   // Time for the transformation to end
 };
@@ -70,21 +72,26 @@ public:
     }
     
     // Translates model from current position to new Position in a certain time in seconds
-    void Translate(glm::vec3 nPos, float finalTime, float currTime){
+    void Translate(glm::vec3 nPos, float timeTaken, float currTime){
         // If time == 0 then Translates instantly
         translation t;
         t.newPosition = nPos;
         t.inicialTime = currTime;
-        t.endingTime = finalTime + currTime;
+        t.endingTime = timeTaken + currTime;
         t.inicialPosition = this->currPosition;
         translations.push(t);
 
     }
 
     // Scales model using 3 values (x, y, z) in a certain time in seconds
-    void Scale(glm::vec3 nScale, float time){
+    void Scale(glm::vec3 nScale, float timeTaken, float currTime){
         // If time == 0 then scales instantly
-
+        scale s;
+        s.inicialTime = currTime;
+        s.endingTime = currTime + timeTaken;
+        s.scale = nScale;
+        s.inicialScale = this->currScale;
+        scales.push(s);
     }
 
     // Rotates model in a certain angle, in a certain time in seconds around a specific axis
@@ -97,23 +104,30 @@ public:
         this->currTime = currentTime;
 
         // Scales, Translates and then rotates, acording to the first elements of the queues
-        glm::mat4 trasform(1.0);
+        glm::mat4 transform(1.0);
         // Translate
-        trasform = glm::translate(trasform, translateVector());
-         
+        transform = glm::translate(transform, translateVector());
+        // Rotate
+        /* Code */
+        // Scale
+        transform = glm::scale(transform, scaleVector());
 
         /*
         transform = glm::translate(transform, glm::vec3(-0.5f, 0.5f, 0.0f));
         float scaleAmount = sin(glfwGetTime());
         transform = glm::scale(transform, glm::vec3(scaleAmount, scaleAmount, scaleAmount));
         */
-        return trasform;
+        return transform;
     }
+
+
 
 private:
     // Must store current position and scale
-    glm::vec3 currPosition;
-    glm::vec3 currScale;
+    glm::vec3 currPosition = glm::vec3(0);
+    glm::vec3 currScale = glm::vec3(1.0);
+    float currAngle;
+    glm::vec3 axis;
     float currTime;
 
     queue<translation> translations;
@@ -137,8 +151,26 @@ private:
                 this->currPosition.z = t.inicialPosition.z + percentage * (t.newPosition.z - t.inicialPosition.z);
             }
         }
-
         return currPosition;
+    }
+
+    glm::vec3 scaleVector(){
+        if(!scales.empty()){
+            scale s = scales.front();
+            float percentage = (this->currTime - s.inicialTime) / (s.endingTime - s.inicialTime);
+            if(percentage >= 1){
+                scales.pop();
+                this->currScale = s.scale;
+            }
+            else {
+                // otherwise, calculate how much must be translate and does it (refreshing the currPosition)
+                this->currScale.x = s.inicialScale.x + percentage * (s.scale.x - s.inicialScale.x);
+                this->currScale.y = s.inicialScale.y + percentage * (s.scale.y - s.inicialScale.y);
+                this->currScale.z = s.inicialScale.z + percentage * (s.scale.z - s.inicialScale.z);
+            }
+        }
+
+        return currScale;
     }
 
     /*  Functions   */
