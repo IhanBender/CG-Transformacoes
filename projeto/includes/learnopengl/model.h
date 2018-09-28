@@ -31,7 +31,7 @@ struct rotation {
     float inicialTime;  // Time that the trasformation began
     float endingTime;   // Time for the transformation to end
     glm::vec3 axis;
-    bool started;
+    bool ended;
 };
 
 struct rotationTuple {
@@ -44,7 +44,7 @@ struct translation {
     glm::vec3 inicialPosition;
     float inicialTime;  // Time that the trasformation began
     float endingTime;   // Time for the transformation to end
-    bool started;
+    bool ended;
 };
 
 struct scale {
@@ -52,7 +52,7 @@ struct scale {
     glm::vec3 inicialScale;
     float inicialTime;  // Time that the trasformation began
     float endingTime;   // Time for the transformation to end
-    bool started;
+    bool ended;
 };
 
 class Model 
@@ -68,10 +68,11 @@ public:
     // constructor, expects a filepath to a 3D model.
     Model(string const &path, bool gamma = false) : gammaCorrection(gamma)
     {
+        currRotating.ended = true;
+        currTranslating.ended = true;
+        currScaling.ended = true;
         loadModel(path);
     }
-
-    // Get 
 
     // draws the model, and thus all its meshes
     void Draw(Shader shader)
@@ -86,33 +87,25 @@ public:
         translation t;
         t.newPosition = nPos;
         t.endingTime = timeTaken;
-        t.started = false;
+        t.ended = false;
         translations.push(t);
-
     }
 
     // Scales model using 3 values (x, y, z) in a certain time in seconds
-    void Scale(glm::vec3 nScale, float timeTaken, float currTime){
-        // If time == 0 then scales instantly
+    void Scale(glm::vec3 nScale, float time){
         scale s;
-        //s.inicialTime = currTime;
-        s.endingTime = timeTaken;
+        s.endingTime = time;
         s.scale = nScale;
-        s.inicialScale = this->currScale;
-        s.started = false;
+        s.ended = false;
         scales.push(s);
     }
 
     // Rotates model in a certain angle, in a certain time in seconds around a specific axis
-    void RotateAx(float angle, float timeTaken, float currTime, glm::vec3 axis){
-        float PI = 3.14159265359;
+    void RotateAx(float angle, float timeTaken, glm::vec3 axis){
         rotation r;
-        r.inicialTime = currTime;
         r.endingTime = timeTaken;
-        //r.inicialAngle = currAngle;
-        r.finalAngle = angle * PI / 180;    // Converts from degrees to radians
+        r.finalAngle = angle;    // Converts from degrees to radians
         r.axis = axis;
-        r.started = false;
         rotations.push(r);
     }
 
@@ -130,11 +123,6 @@ public:
         // Scale
         transform = glm::scale(transform, scaleVector());
 
-        /*
-        transform = glm::translate(transform, glm::vec3(-0.5f, 0.5f, 0.0f));
-        float scaleAmount = sin(glfwGetTime());
-        transform = glm::scale(transform, glm::vec3(scaleAmount, scaleAmount, scaleAmount));
-        */
         return transform;
     }
 
@@ -156,12 +144,12 @@ private:
     scale currScaling;
     rotation currRotating;
 
+    /*  Functions   */
     glm::vec3 translateVector(){
-        
-        if(!currTranslating.started){
+        if(currTranslating.ended){
             if(!translations.empty()){
                 currTranslating = translations.front();
-                currTranslating.started = true;
+                currTranslating.ended = false;
                 currTranslating.inicialPosition = currPosition;
                 currTranslating.inicialTime = currTime;
                 currTranslating.endingTime += currTime;
@@ -171,16 +159,13 @@ private:
                 return currPosition;
             }
         }
-
         // if reached this line, has a currTranslation going on
-
         // Percentage of trasformation that has to be done
         translation t = currTranslating;
         float percentage = (this->currTime - t.inicialTime) / (t.endingTime - t.inicialTime);
         // if should already had transformed, do it and pops from the queue
         if(percentage >= 1){
-            translations.pop();
-            currTranslating.started = false;
+            currTranslating.ended = true;
             this->currPosition = t.newPosition;
         }
         else {
@@ -190,52 +175,72 @@ private:
             this->currPosition.z = t.inicialPosition.z + percentage * (t.newPosition.z - t.inicialPosition.z);
         }
         return currPosition;
-
     }
 
     rotationTuple rotationData(){
         rotationTuple rt;
+        rt.angle = currAngle;
+        rt.axis = axis;
 
-        if(!rotations.empty()){
-            rotation r = rotations.front();
-            // Percentage of trasformation that has to be done
-            this->axis = r.axis;
+        if(currRotating.ended){
+            if(!rotations.empty()){
+                currRotating = rotations.front();
+                currRotating.ended = false;
+                currRotating.inicialAngle = 0;                
+                currRotating.inicialTime = currTime;
+                currRotating.endingTime += currTime;
 
-            float percentage = (this->currTime - r.inicialTime) / (r.endingTime - r.inicialTime);
-            if(percentage >= 1){
-                rotations.pop();
-                this->currAngle = r.finalAngle;
+                axis = currRotating.axis;
+                rotations.pop(); 
             }
             else {
-                this->currAngle = r.inicialAngle + percentage * (r.finalAngle - r.inicialAngle);
+                return rt;
             }
         }
 
+        rotation r = currRotating;
+        float percentage = (this->currTime - r.inicialTime) / (r.endingTime - r.inicialTime);
+        if(percentage >= 1){
+            currRotating.ended = true;
+            this->currAngle = r.finalAngle;
+        }
+        else {
+            this->currAngle = r.inicialAngle + percentage * (r.finalAngle - r.inicialAngle);
+        }
+
         rt.angle = currAngle;
-        rt.axis = axis;
         return rt;
     }
 
     glm::vec3 scaleVector(){
-        if(!scales.empty()){
-            scale s = scales.front();
-            float percentage = (this->currTime - s.inicialTime) / (s.endingTime - s.inicialTime);
-            if(percentage >= 1){
-                scales.pop();
-                this->currScale = s.scale;
+        if(currScaling.ended){
+            if(!scales.empty()){
+                currScaling = scales.front();
+                currScaling.ended = false;
+                currScaling.inicialScale = currScale;
+                currScaling.inicialTime = currTime;
+                currScaling.endingTime += currTime;
+                scales.pop(); 
             }
             else {
-                // otherwise, calculate how much must be translate and does it (refreshing the currPosition)
-                this->currScale.x = s.inicialScale.x + percentage * (s.scale.x - s.inicialScale.x);
-                this->currScale.y = s.inicialScale.y + percentage * (s.scale.y - s.inicialScale.y);
-                this->currScale.z = s.inicialScale.z + percentage * (s.scale.z - s.inicialScale.z);
+                return currScale;
             }
         }
 
+        scale s = currScaling;
+        float percentage = (this->currTime - s.inicialTime) / (s.endingTime - s.inicialTime);
+        if(percentage >= 1){
+            currScaling.ended = true;
+            this->currScale = s.scale;
+        }
+        else {
+            this->currScale.x = s.inicialScale.x + percentage * (s.scale.x - s.inicialScale.x);
+            this->currScale.y = s.inicialScale.y + percentage * (s.scale.y - s.inicialScale.y);    
+            this->currScale.z = s.inicialScale.z + percentage * (s.scale.z - s.inicialScale.z);
+        }
         return currScale;
     }
 
-    /*  Functions   */
     // loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
     void loadModel(string const &path)
     {

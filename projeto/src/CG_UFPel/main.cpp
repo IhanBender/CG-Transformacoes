@@ -79,7 +79,7 @@ int main()
 
     // load models
     // -----------
-    Model ourModel(FileSystem::getPath("resources/objects/rock/rock.obj"));
+    Model ourModel(FileSystem::getPath("resources/objects/planet/planet.obj"));
 
     
     // draw in wireframe
@@ -87,6 +87,9 @@ int main()
 
     // render loop
     // -----------
+    bool t1 = false, t2 = false, t3 = false, t4 = false;
+    bool s1 = false, s2 = false, s3 = false, s4 = false;
+    bool r1 = false, r2 = false, r3 = false, r4 = false;
     while (!glfwWindowShouldClose(window))
     {
         // per-frame time logic
@@ -98,14 +101,77 @@ int main()
         // input
         // -----
         processInput(window);
-        if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
+
+    
+        // Translate
+        if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)   t1 = true;
+        if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS)   t2 = true;
+        if (glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS)   t3 = true;
+        if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS)   t4 = true;
+
+        if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE && t1){   
             ourModel.Translate(glm::vec3(0.5, 0.5, 0.5), 3);
-        if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-            ourModel.Scale(glm::vec3(0.5, 0.5, 0.5), 5, currentFrame);
-        if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
-            ourModel.RotateAx(60.0, 5, currentFrame, glm::vec3(1, 1, 0));
-        if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
-            ourModel.RotateAx(180.0, 5, currentFrame, glm::vec3(0, 1, 0));
+            t1 = false;
+        }
+        if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_RELEASE && t2){
+            ourModel.Translate(glm::vec3(-0.5, -0.5, 0.5), 3);
+            t2 = false;
+        }
+        if (glfwGetKey(window, GLFW_KEY_U) == GLFW_RELEASE && t3){
+            ourModel.Translate(glm::vec3(0, 0, 0), 0);
+            t3 = false;
+        }
+        if (glfwGetKey(window, GLFW_KEY_I) == GLFW_RELEASE && t4){
+            ourModel.Translate(glm::vec3(1, -1, 1), 5);
+            t4 = false;
+        }
+
+        // Rotate
+        if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS)   r1 = true;
+        if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS)   r2 = true;
+        if (glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS)   r3 = true;
+        if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS)   r4 = true;
+
+        if (glfwGetKey(window, GLFW_KEY_V) == GLFW_RELEASE && r1){   
+            ourModel.RotateAx(glm::radians(90.0), 5, glm::vec3(0, 1, 0));
+            r1 = false;
+        }
+        if (glfwGetKey(window, GLFW_KEY_B) == GLFW_RELEASE && r2){
+            ourModel.RotateAx(glm::radians(180.0), 5, glm::vec3(1, 0, 0));
+            r2 = false;
+        }
+        if (glfwGetKey(window, GLFW_KEY_N) == GLFW_RELEASE && r3){
+            ourModel.RotateAx(glm::radians(60.0), 5, glm::vec3(0, -1, 0));
+            r3 = false;
+        }
+        if (glfwGetKey(window, GLFW_KEY_M) == GLFW_RELEASE && r4){
+            ourModel.RotateAx(glm::radians(310.0), 2, glm::vec3(0.71, -0.45, 1.1));
+            r4 = false;
+        }
+
+        // Scale
+        if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)   s1 = true;
+        if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS)   s2 = true;
+        if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS)   s3 = true;
+        if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS)   s4 = true;
+
+        if (glfwGetKey(window, GLFW_KEY_G) == GLFW_RELEASE && s1){
+            ourModel.Scale(glm::vec3(0.5, 0.5, 0.5), 5);
+            s1 = false;
+        }
+        if (glfwGetKey(window, GLFW_KEY_H) == GLFW_RELEASE && s2){
+            ourModel.Scale(glm::vec3(0.7, 0.5, 0.25), 4);
+            s2 = false;
+        }
+        if (glfwGetKey(window, GLFW_KEY_J) == GLFW_RELEASE && s3){
+            ourModel.Scale(glm::vec3(1, 1, 1), 0);
+            s3 = false;
+        }
+        if (glfwGetKey(window, GLFW_KEY_K) == GLFW_RELEASE && s4){
+            ourModel.Scale(glm::vec3(1.5, 1.5, 1.5), 2);
+            s4 = false;
+        }
+            
 
         // render
         // ------
