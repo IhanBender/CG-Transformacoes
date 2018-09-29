@@ -55,6 +55,18 @@ struct scale {
     bool ended;
 };
 
+struct shear {
+    // x = 0, y = 1, x = 0
+    int axis;
+    float inicialFirstValue;
+    float inicialSecondValue;
+    float firstValue;
+    float secondValue;
+    float inicialTime;
+    float time;
+    bool ended;
+};
+
 class Model 
 {
 public:
@@ -71,6 +83,7 @@ public:
         currRotating.ended = true;
         currTranslating.ended = true;
         currScaling.ended = true;
+        currShearing.ended = true;
         loadModel(path);
     }
 
@@ -109,11 +122,50 @@ public:
         rotations.push(r);
     }
 
+    // Shears
+    void ShearX(float y, float z, float time){
+        shear s;
+        // Gets x axis (0)
+        s.axis = 0; 
+        s.ended = false;
+        s.time = time;
+        s.firstValue = y;
+        s.secondValue = z;
+        //transform[1][0] = y;
+        //transform[2][0] = z;
+        shears.push(s);
+    }
+
+    void ShearY(float x, float z, float time){
+        shear s;
+        // Gets y axis (1)
+        s.axis = 1; 
+        s.ended = false;
+        s.time = time;
+        s.firstValue = z;
+        s.secondValue = x;
+        //transform[0][1] = 1;
+        //transform[2][1] = 1;
+        shears.push(s);
+    }
+
+    void ShearZ(float x, float y, float time){
+        shear s;
+        // Gets z axis (2)
+        s.axis = 2; 
+        s.ended = false;
+        s.time = time;
+        s.firstValue = x;
+        s.secondValue = y;
+        //transform[0][2] = 1;
+        //transform[1][2] = 1;
+        shears.push(s);
+    }
+
     // Returns a trasformation matrix to be used on model movements and refreshes model's attributes
     glm::mat4 TrasformationMatrix(float currentTime){
         this->currTime = currentTime;
-
-        // Scales, Translates and then rotates, acording to the first elements of the queues
+        // Scales, Translates, rotates and then shears, acording to the first elements of the queues
         glm::mat4 transform(1.0);
         // Translate
         transform = glm::translate(transform, translateVector());
@@ -122,27 +174,37 @@ public:
         transform = glm::rotate(transform, rt.angle, rt.axis);
         // Scale
         transform = glm::scale(transform, scaleVector());
+        // Shear
+        transform = shearMatrix(transform);
 
         return transform;
     }
-
-
+    
 
 private:
-    // Must store current position and scale
+    // Postion
     glm::vec3 currPosition = glm::vec3(0);
+    // Scale
     glm::vec3 currScale = glm::vec3(1.0);
+    // Rotation
     float currAngle = 0;
     glm::vec3 axis = glm::vec3(0, 1.0, 0);
+    // Shear
+    float shearValue1 = 0;
+    float shearValue2 = 0;
+    int shearAxis = 0;
+    // Time
     float currTime;
 
     queue<translation> translations;
     queue<scale> scales;
     queue<rotation> rotations;
+    queue<shear> shears;
 
     translation currTranslating;
     scale currScaling;
     rotation currRotating;
+    shear currShearing;
 
     /*  Functions   */
     glm::vec3 translateVector(){
@@ -175,6 +237,51 @@ private:
             this->currPosition.z = t.inicialPosition.z + percentage * (t.newPosition.z - t.inicialPosition.z);
         }
         return currPosition;
+    }
+
+    // Shear
+    glm::mat4 shearMatrix(glm::mat4 transform) {
+       
+        if(currShearing.ended){
+            if(!shears.empty()){
+                currShearing = shears.front();
+                currShearing.ended = false;
+                currShearing.inicialTime = currTime;
+                currShearing.time += currTime;
+                currShearing.inicialFirstValue = 0;
+                currShearing.inicialSecondValue = 0;
+                // Resets shear status
+                shearAxis = currShearing.axis;
+                shearValue1 = 0;
+                shearValue2 = 0;
+                // Pops from queue
+                shears.pop();
+            }
+            else {
+                glm::mat4 sMatrix(1);
+                sMatrix[(shearAxis + 1) % 3][shearAxis] = this->shearValue1;
+                sMatrix[(shearAxis + 2) % 3][shearAxis] = this->shearValue2;
+                return sMatrix * transform;
+            }
+        }
+
+        shear s = currShearing;
+        float percentage = (this->currTime - s.inicialTime) / (s.time - s.inicialTime);
+        if(percentage >= 1){
+            currShearing.ended = true;
+            this->shearValue1 = s.firstValue;
+            this->shearValue2 = s.secondValue;
+        }
+        else {
+            this->shearValue1 = s.inicialFirstValue + percentage * (s.firstValue - s.inicialFirstValue);
+            this->shearValue2 = s.inicialSecondValue + percentage * (s.secondValue - s.inicialSecondValue);
+        }
+
+        glm::mat4 sMatrix(1);
+        sMatrix[(shearAxis + 1) % 3][shearAxis] = this->shearValue1;
+        sMatrix[(shearAxis + 2) % 3][shearAxis] = this->shearValue2;
+        return sMatrix * transform;
+
     }
 
     rotationTuple rotationData(){
