@@ -5,6 +5,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/spline.hpp>
 #include <stb_image.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -118,6 +119,7 @@ public:
         rotation r;
         r.endingTime = timeTaken;
         r.finalAngle = angle;    // Converts from degrees to radians
+        r.inicialAngle = 0;
         r.axis = axis;
         rotations.push(r);
     }
@@ -170,8 +172,7 @@ public:
         // Translate
         transform = glm::translate(transform, translateVector());
         // Rotate
-        rotationTuple rt = rotationData();
-        transform = glm::rotate(transform, rt.angle, rt.axis);
+        transform = transform * rotationData();
         // Scale
         transform = glm::scale(transform, scaleVector());
         // Shear
@@ -187,8 +188,7 @@ private:
     // Scale
     glm::vec3 currScale = glm::vec3(1.0);
     // Rotation
-    float currAngle = 0;
-    glm::vec3 axis = glm::vec3(0, 1.0, 0);
+    glm::mat4 rotationMatrix;
     // Shear
     float shearValue1 = 0;
     float shearValue2 = 0;
@@ -284,12 +284,10 @@ private:
 
     }
 
-    rotationTuple rotationData(){
-        rotationTuple rt;
-        rt.angle = currAngle;
-        rt.axis = axis;
+    glm::mat4 rotationData(){
 
         if(currRotating.ended){
+
             if(!rotations.empty()){
                 currRotating = rotations.front();
                 currRotating.ended = false;
@@ -297,26 +295,27 @@ private:
                 currRotating.inicialTime = currTime;
                 currRotating.endingTime += currTime;
 
-                axis = currRotating.axis;
                 rotations.pop(); 
             }
             else {
-                return rt;
+                return rotationMatrix;
             }
         }
 
+        float currAngle;
         rotation r = currRotating;
         float percentage = (this->currTime - r.inicialTime) / (r.endingTime - r.inicialTime);
         if(percentage >= 1){
             currRotating.ended = true;
-            this->currAngle = r.finalAngle;
+            rotationMatrix = glm::rotate(rotationMatrix, r.finalAngle, currRotating.axis);
+            return rotationMatrix;
         }
         else {
-            this->currAngle = r.inicialAngle + percentage * (r.finalAngle - r.inicialAngle);
+            currAngle = r.inicialAngle + percentage * (r.finalAngle - r.inicialAngle);
         }
 
-        rt.angle = currAngle;
-        return rt;
+        glm::mat4 rMatrix = glm::rotate(rotationMatrix, currAngle, currRotating.axis);
+        return rMatrix;
     }
 
     glm::vec3 scaleVector(){

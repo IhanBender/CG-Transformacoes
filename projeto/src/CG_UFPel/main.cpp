@@ -227,7 +227,7 @@ int main()
         if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS && models.size() > 0)   r4 = true;
 
         if (glfwGetKey(window, GLFW_KEY_V) == GLFW_RELEASE && r1){   
-            models[currentModel].RotateAx(glm::radians(90.0), 5, glm::vec3(0, 1, 0));
+            models[currentModel].RotateAx(glm::radians(720.0), 5, glm::vec3(0, 1, 0));
             r1 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_B) == GLFW_RELEASE && r2){
