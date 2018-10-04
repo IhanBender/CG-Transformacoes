@@ -94,7 +94,6 @@ int main()
     bool chooseModel;
     bool chooseModelb;
     int currentModel = 0;
-    
     while (!glfwWindowShouldClose(window))
     {
         // per-frame time logic
@@ -216,7 +215,7 @@ int main()
             t3 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_RELEASE && t4){
-            models[currentModel].Translate(glm::vec3(1, -1, 1), 5);
+            models[currentModel].Translate(glm::vec3(1, 1, 1), 2);
             t4 = false;
         }
 
@@ -231,15 +230,16 @@ int main()
             r1 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_B) == GLFW_RELEASE && r2){
-            models[currentModel].RotateAx(glm::radians(180.0), 5, glm::vec3(1, 0, 0));
+            models[currentModel].RotateAx(glm::radians(100.0), 3, glm::vec3(1, 1, 0));
             r2 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_N) == GLFW_RELEASE && r3){
-            models[currentModel].RotateAx(glm::radians(60.0), 5, glm::vec3(0, -1, 0));
+            models[currentModel].RotateAx(glm::radians(60.0), 5, glm::vec3(0, 1, 0));
             r3 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_M) == GLFW_RELEASE && r4){
-            models[currentModel].RotateAx(glm::radians(310.0), 2, glm::vec3(0.71, -0.45, 1.1));
+            models[currentModel].RotatePoint(glm::radians(700.0), 30, glm::vec3(0, 0, 3));
+            //models[currentModel].RotateAx(glm::radians(310.0), 2, glm::vec3(0.71, -0.45, 1.1));
             r4 = false;
         }
 
@@ -250,7 +250,7 @@ int main()
         if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS && models.size() > 0)   s4 = true;
 
         if (glfwGetKey(window, GLFW_KEY_G) == GLFW_RELEASE && s1){
-            models[currentModel].Scale(glm::vec3(0.2, 0.2, 0.2), 5);
+            models[currentModel].Scale(glm::vec3(0.2, 0.2, 0.2), 1);
             s1 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_H) == GLFW_RELEASE && s2){

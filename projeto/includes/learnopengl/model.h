@@ -26,7 +26,7 @@ using namespace std;
 
 unsigned int TextureFromFile(const char *path, const string &directory, bool gamma = false);
 
-struct rotation {
+struct rotationAxis {
     float inicialAngle;
     float finalAngle;
     float inicialTime;  // Time that the trasformation began
@@ -35,9 +35,13 @@ struct rotation {
     bool ended;
 };
 
-struct rotationTuple {
+struct rotationRoundPoint {
     float angle;
     glm::vec3 axis;
+    glm::vec3 point;
+    float inicialTime;
+    float endingTime;
+    bool ended;
 };
 
 struct translation {
@@ -85,6 +89,7 @@ public:
         currTranslating.ended = true;
         currScaling.ended = true;
         currShearing.ended = true;
+        currRPRotation.ended = true;
         loadModel(path);
     }
 
@@ -116,12 +121,22 @@ public:
 
     // Rotates model in a certain angle, in a certain time in seconds around a specific axis
     void RotateAx(float angle, float timeTaken, glm::vec3 axis){
-        rotation r;
+        rotationAxis r;
         r.endingTime = timeTaken;
         r.finalAngle = angle;    // Converts from degrees to radians
         r.inicialAngle = 0;
         r.axis = axis;
         rotations.push(r);
+    }
+
+    void RotatePoint(float angle, float timeTaken, glm::vec3 point){
+        rotationRoundPoint r;
+        r.angle = angle;
+        r.axis = glm::vec3(0,1,0);
+        r.ended = false;
+        r.endingTime = timeTaken;
+        r.point = point;
+        rpRotations.push(r);
     }
 
     // Shears
@@ -169,16 +184,13 @@ public:
         this->currTime = currentTime;
         // Scales, Translates, rotates and then shears, acording to the first elements of the queues
         glm::mat4 transform(1.0);
-        // Translate
-        transform = glm::translate(transform, translateVector());
-        // Rotate
-        transform = transform * rotationData();
-        // Scale
-        transform = glm::scale(transform, scaleVector());
-        // Shear
-        transform = shearMatrix(transform);
+        glm::mat4 rotationRP = roundPointRotationMatrix(transform);
+        glm::mat4 rotation = rotationData();
+        glm::mat4 translate = glm::translate(transform, translateVector());
+        glm::mat4 scale = glm::scale(transform, scaleVector());
+        glm::mat4 shear = shearMatrix(transform);
 
-        return transform;
+        return translate * shear * rotationRP * rotation * scale;
     }
     
 
@@ -198,12 +210,14 @@ private:
 
     queue<translation> translations;
     queue<scale> scales;
-    queue<rotation> rotations;
+    queue<rotationAxis> rotations;
     queue<shear> shears;
+    queue<rotationRoundPoint> rpRotations;
 
     translation currTranslating;
     scale currScaling;
-    rotation currRotating;
+    rotationAxis currRotating;
+    rotationRoundPoint currRPRotation;
     shear currShearing;
 
     /*  Functions   */
@@ -303,7 +317,7 @@ private:
         }
 
         float currAngle;
-        rotation r = currRotating;
+        rotationAxis r = currRotating;
         float percentage = (this->currTime - r.inicialTime) / (r.endingTime - r.inicialTime);
         if(percentage >= 1){
             currRotating.ended = true;
@@ -345,6 +359,45 @@ private:
             this->currScale.z = s.inicialScale.z + percentage * (s.scale.z - s.inicialScale.z);
         }
         return currScale;
+    }
+
+    glm::mat4 roundPointRotationMatrix(glm::mat4 transform){
+        glm::mat4 rMatrix = transform;
+
+        if(currRPRotation.ended){
+            if(!rpRotations.empty()){
+                currRPRotation = rpRotations.front();
+                currRPRotation.inicialTime = currTime;
+                currRPRotation.endingTime += currTime;
+                currRPRotation.ended = false;
+                this->currPosition.y = currRPRotation.point.y;
+                rpRotations.pop();
+            }
+            else {
+                return glm::mat4(1.0) * transform;
+            }
+        }
+        
+        rotationRoundPoint r = currRPRotation;
+        float currAngle = r.angle;
+        float percentage = (this->currTime - r.inicialTime) / (r.endingTime - r.inicialTime);
+        if(percentage >= 1){
+            currRPRotation.ended = true;
+            rMatrix = glm::translate(rMatrix, r.point);
+            rMatrix = glm::rotate(rMatrix, currAngle, r.axis);
+            rMatrix = glm::translate(rMatrix, -(r.point));
+            
+            rotationMatrix = rotationMatrix * rMatrix;
+            return rMatrix;
+        }
+        else {
+            currAngle = r.angle + percentage * (r.angle);
+            rMatrix = glm::translate(rMatrix, r.point);
+            rMatrix = glm::rotate(rMatrix, currAngle, r.axis);
+            rMatrix = glm::translate(rMatrix, -(r.point));
+            return rMatrix;
+        }
+        
     }
 
     // loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
