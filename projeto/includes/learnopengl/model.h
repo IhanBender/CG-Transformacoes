@@ -72,6 +72,16 @@ struct shear {
     bool ended;
 };
 
+struct bezier {
+    glm::vec3 p0;
+    glm::vec3 p1;
+    glm::vec3 p2;
+    glm::vec3 p3;
+    float inicialTime;
+    float time;
+    bool ended;
+};
+
 class Model 
 {
 public:
@@ -90,6 +100,8 @@ public:
         currScaling.ended = true;
         currShearing.ended = true;
         currRPRotation.ended = true;
+        currPosition = glm::vec3(0,0,0);
+        currScale = glm::vec3(1,1,1);
         loadModel(path);
     }
 
@@ -139,6 +151,23 @@ public:
         rpRotations.push(r);
     }
 
+    void BezierCurve(
+        glm::vec3 p0,
+        glm::vec3 p1,
+        glm::vec3 p2,
+        glm::vec3 p3,
+        float time)
+    {
+        bezier b;
+        b.p0 = p0;
+        b.p1 = p1;
+        b.p2 = p2;
+        b.p3 = p3;
+        b.time = time;
+        b.ended = false;
+        bezierCurves.push(b);
+    }
+
     // Shears
     void ShearX(float y, float z, float time){
         shear s;
@@ -183,6 +212,7 @@ public:
     glm::mat4 TrasformationMatrix(float currentTime){
         this->currTime = currentTime;
         // Scales, Translates, rotates and then shears, acording to the first elements of the queues
+        currPosition = bezierPosition();
         glm::mat4 transform(1.0);
         glm::mat4 rotationRP = roundPointRotationMatrix(transform);
         glm::mat4 rotation = rotationData();
@@ -213,11 +243,13 @@ private:
     queue<rotationAxis> rotations;
     queue<shear> shears;
     queue<rotationRoundPoint> rpRotations;
+    queue<bezier> bezierCurves;
 
     translation currTranslating;
     scale currScaling;
     rotationAxis currRotating;
     rotationRoundPoint currRPRotation;
+    bezier currBezier;
     shear currShearing;
 
     /*  Functions   */
@@ -399,6 +431,44 @@ private:
         }
         
     }
+
+    
+    // Cubic Bézier curve Equation
+    glm::vec3 Bezier(bezier b, float t){
+        return (float)pow(1-t, 3) * b.p0 + 
+               3 * (float)pow(1-t, 2) * t * b.p1 +
+               3 * (1-t) * (float)pow(t, 2) * b.p2 +
+               (float)pow(t, 3) * b.p3;
+    }
+
+    glm::vec3 bezierPosition(){
+
+        if(currBezier.ended){
+            if(!bezierCurves.empty()){
+                currBezier = bezierCurves.front();
+                currBezier.inicialTime = currTime;
+                currBezier.time += currTime;
+                currBezier.ended = false;
+                bezierCurves.pop();
+            }
+            else {
+                return currPosition;
+            }
+        }
+        
+        bezier b = currBezier;
+        float percentage = (this->currTime - b.inicialTime) / (b.time - b.inicialTime);
+        if(percentage >= 1){
+            currBezier.ended = true;
+            return currBezier.p3;
+        }
+        else {
+            glm::vec3 v = Bezier(currBezier, percentage);
+            //printf("%f %f %f\n", v.x, v.y, v.z);
+            return v;
+        }
+    }
+
 
     // loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
     void loadModel(string const &path)
