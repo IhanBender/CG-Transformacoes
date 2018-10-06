@@ -72,7 +72,7 @@ struct shear {
     bool ended;
 };
 
-struct bezier {
+struct spline {
     glm::vec3 p0;
     glm::vec3 p1;
     glm::vec3 p2;
@@ -158,7 +158,7 @@ public:
         glm::vec3 p3,
         float time)
     {
-        bezier b;
+        spline b;
         b.p0 = p0;
         b.p1 = p1;
         b.p2 = p2;
@@ -166,6 +166,23 @@ public:
         b.time = time;
         b.ended = false;
         bezierCurves.push(b);
+    }
+
+     void BSplineCurve(
+        glm::vec3 p0,
+        glm::vec3 p1,
+        glm::vec3 p2,
+        glm::vec3 p3,
+        float time)
+    {
+        spline b;
+        b.p0 = p0;
+        b.p1 = p1;
+        b.p2 = p2;
+        b.p3 = p3;
+        b.time = time;
+        b.ended = false;
+        bSplineCurves.push(b);
     }
 
     // Shears
@@ -212,6 +229,7 @@ public:
     glm::mat4 TrasformationMatrix(float currentTime){
         this->currTime = currentTime;
         // Scales, Translates, rotates and then shears, acording to the first elements of the queues
+        currPosition = bSplinePosition();
         currPosition = bezierPosition();
         glm::mat4 transform(1.0);
         glm::mat4 rotationRP = roundPointRotationMatrix(transform);
@@ -243,13 +261,15 @@ private:
     queue<rotationAxis> rotations;
     queue<shear> shears;
     queue<rotationRoundPoint> rpRotations;
-    queue<bezier> bezierCurves;
+    queue<spline> bezierCurves;
+    queue<spline> bSplineCurves;
 
     translation currTranslating;
     scale currScaling;
     rotationAxis currRotating;
     rotationRoundPoint currRPRotation;
-    bezier currBezier;
+    spline currBezier;
+    spline currBSpline;
     shear currShearing;
 
     /*  Functions   */
@@ -432,9 +452,55 @@ private:
         
     }
 
+    // 
+    float B0(float u){
+        return  float(pow(u - 1, 3) / 6.0);
+    }
+
+    float B1(float u){
+        return float((3 * pow(u, 3) - 6 * pow(u, 2) + 4) / 6.0);
+    }
+
+    float B2(float u){
+        return float((-3 * pow(u, 3) + 3 * pow(u, 2) + 3 * u + 1) / 6.0);
+    }
+
+    float B3(float u){
+        return float(pow(u, 3) / 6.0);
+    }
+
+    glm::vec3 BSpline(spline b, float u){
+       return B0(u) * b.p0 + B1(u) * b.p1 + B2(u) * b.p2 + B3(u) * b.p3;
+    }
+
+    glm::vec3 bSplinePosition(){
+        if(currBSpline.ended){
+            if(!bSplineCurves.empty()){
+                currBSpline = bSplineCurves.front();
+                currBSpline.inicialTime = currTime;
+                currBSpline.time += currTime;
+                currBSpline.ended = false;
+                bSplineCurves.pop();
+            }
+            else {
+                return currPosition;
+            }
+        }
+        
+        spline b = currBSpline;
+        float percentage = (this->currTime - b.inicialTime) / (b.time - b.inicialTime);
+        if(percentage >= 1){
+            currBSpline.ended = true;
+        }
     
+        glm::vec3 v = BSpline(currBSpline, percentage);
+        //printf("%f %f %f\n", v.x, v.y, v.z);
+        return v;
+    }
+
+
     // Cubic Bézier curve Equation
-    glm::vec3 Bezier(bezier b, float t){
+    glm::vec3 Bezier(spline b, float t){
         return (float)pow(1-t, 3) * b.p0 + 
                3 * (float)pow(1-t, 2) * t * b.p1 +
                3 * (1-t) * (float)pow(t, 2) * b.p2 +
@@ -456,7 +522,7 @@ private:
             }
         }
         
-        bezier b = currBezier;
+        spline b = currBezier;
         float percentage = (this->currTime - b.inicialTime) / (b.time - b.inicialTime);
         if(percentage >= 1){
             currBezier.ended = true;

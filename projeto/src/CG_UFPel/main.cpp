@@ -82,7 +82,7 @@ int main()
 
     // render loop
     // -----------
-    bool t1 = false, t2 = false, t3 = false, t4 = false;
+    bool t1 = false, t2 = false, t3 = false, t4 = false, t5 = false;
     bool s1 = false, s2 = false, s3 = false, s4 = false;
     bool r1 = false, r2 = false, r3 = false, r4 = false;
     bool sh1 = false, sh2 = false, sh3 = false, sh4 = false;
@@ -201,13 +201,14 @@ int main()
         if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS && models.size() > 0)   t2 = true;
         if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS && models.size() > 0)   t3 = true;
         if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS && models.size() > 0)   t4 = true;
+        if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS && models.size() > 0)   t5 = true;
 
         if (glfwGetKey(window, GLFW_KEY_E) == GLFW_RELEASE && t1){
             models[currentModel].Translate(glm::vec3(-1,0,0), 3);   
             t1 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_R) == GLFW_RELEASE && t2){
-            models[currentModel].BezierCurve(glm::vec3(0,0,3), glm::vec3(-1,0,0), glm::vec3(1,1,-3), glm::vec3(-2,0,-5), 15);
+            models[currentModel].BezierCurve(glm::vec3(0,0,3), glm::vec3(-1,0,0), glm::vec3(1,1,-3), glm::vec3(-2,0,-5), 8);
             t2 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE && t3){
@@ -217,6 +218,10 @@ int main()
         if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_RELEASE && t4){
             models[currentModel].Translate(glm::vec3(-2,0,-5), 2);
             t4 = false;
+        }
+        if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_RELEASE && t5){
+            models[currentModel].BSplineCurve(glm::vec3(0,0,3), glm::vec3(-1,0,0), glm::vec3(1,1,-3), glm::vec3(-2,0,-5), 8);
+            t5 = false;
         }
 
         // Rotate
