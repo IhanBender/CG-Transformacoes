@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/spline.hpp>
+#include <glm/gtx/vector_angle.hpp>
 #include <stb_image.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -144,7 +145,6 @@ public:
     void RotatePoint(float angle, float timeTaken, glm::vec3 point){
         rotationRoundPoint r;
         r.angle = angle;
-        r.axis = glm::vec3(0,1,0);
         r.ended = false;
         r.endingTime = timeTaken;
         r.point = point;
@@ -232,12 +232,13 @@ public:
         currPosition = bSplinePosition();
         currPosition = bezierPosition();
         glm::mat4 transform(1.0);
-        glm::mat4 rotationRP = roundPointRotationMatrix(transform);
+        glm::mat4 rotationRP = roundPointRotationMatrix();
         glm::mat4 rotation = rotationData();
         glm::mat4 translate = glm::translate(transform, translateVector());
         glm::mat4 scale = glm::scale(transform, scaleVector());
         glm::mat4 shear = shearMatrix(transform);
 
+        //return rotationRP;
         return translate * shear * rotationRP * rotation * scale;
     }
     
@@ -248,7 +249,9 @@ private:
     // Scale
     glm::vec3 currScale = glm::vec3(1.0);
     // Rotation
-    glm::mat4 rotationMatrix;
+    glm::vec3 upVector = glm::vec3(0,1,0);
+    glm::vec3 frontVector = glm::vec3(0,0,1);
+    //glm::mat4 rotationMatrix;
     // Shear
     float shearValue1 = 0;
     float shearValue2 = 0;
@@ -364,23 +367,24 @@ private:
                 rotations.pop(); 
             }
             else {
-                return rotationMatrix;
+                return glm::rotate(glm::angle(glm::vec3(0,0,1), frontVector), upVector);
             }
         }
 
         float currAngle;
         rotationAxis r = currRotating;
         float percentage = (this->currTime - r.inicialTime) / (r.endingTime - r.inicialTime);
+        glm::mat4 currentMatrix = glm::rotate(glm::angle(glm::vec3(0,0,1), frontVector), upVector);
         if(percentage >= 1){
             currRotating.ended = true;
-            rotationMatrix = glm::rotate(rotationMatrix, r.finalAngle, currRotating.axis);
-            return rotationMatrix;
+            //glm::vec3 newFrontVector = r.
+            return glm::rotate(currentMatrix, r.finalAngle, currRotating.axis);
         }
         else {
             currAngle = r.inicialAngle + percentage * (r.finalAngle - r.inicialAngle);
         }
 
-        glm::mat4 rMatrix = glm::rotate(rotationMatrix, currAngle, currRotating.axis);
+        glm::mat4 rMatrix = glm::rotate(currentMatrix, currAngle, currRotating.axis);
         return rMatrix;
     }
 
@@ -413,40 +417,63 @@ private:
         return currScale;
     }
 
-    glm::mat4 roundPointRotationMatrix(glm::mat4 transform){
-        glm::mat4 rMatrix = transform;
+    glm::mat4 roundPointRotationMatrix(){
 
         if(currRPRotation.ended){
             if(!rpRotations.empty()){
                 currRPRotation = rpRotations.front();
+
+                glm::vec3 newFrontVector;
+                if(currRPRotation.point != currPosition)
+                    newFrontVector = glm::normalize(currRPRotation.point - currPosition);
+                else
+                    newFrontVector = frontVector;
+
+                newFrontVector = glm::normalize(newFrontVector);
+                if(newFrontVector != frontVector && (newFrontVector + frontVector) != glm::vec3(0)){
+                    upVector = glm::normalize(glm::cross(frontVector, newFrontVector));
+                    if(upVector.y <= 0.0)    
+                            upVector *= -1;
+                }
+                
+                frontVector = newFrontVector;
+                printf("%f %f %f\n", currRPRotation.point.x, currRPRotation.point.y, currRPRotation.point.z);
+                printf("%f %f %f\n", currPosition.x, currPosition.y, currPosition.z);
+                printf("%f %f %f\n", upVector.x, upVector.y, upVector.z);
+                printf("%f %f %f\n", frontVector.x, frontVector.y, frontVector.z);
+
                 currRPRotation.inicialTime = currTime;
                 currRPRotation.endingTime += currTime;
                 currRPRotation.ended = false;
-                this->currPosition.y = currRPRotation.point.y;
                 rpRotations.pop();
             }
             else {
-                return glm::mat4(1.0) * transform;
+                return glm::mat4(1.0);
             }
         }
         
+        glm::mat4 rMatrix(1);
         rotationRoundPoint r = currRPRotation;
         float currAngle = r.angle;
         float percentage = (this->currTime - r.inicialTime) / (r.endingTime - r.inicialTime);
         if(percentage >= 1){
             currRPRotation.ended = true;
             rMatrix = glm::translate(rMatrix, r.point);
-            rMatrix = glm::rotate(rMatrix, currAngle, r.axis);
+            rMatrix = glm::rotate(rMatrix, currAngle, upVector);
             rMatrix = glm::translate(rMatrix, -(r.point));
+
+            frontVector = glm::normalize(currRPRotation.point - currPosition);
+            currPosition = glm::vec3(rMatrix[3][0], rMatrix[3][1], rMatrix[3][2]);
             
-            rotationMatrix = rotationMatrix * rMatrix;
             return rMatrix;
         }
         else {
-            currAngle = r.angle + percentage * (r.angle);
+            currAngle = percentage * (r.angle);
             rMatrix = glm::translate(rMatrix, r.point);
-            rMatrix = glm::rotate(rMatrix, currAngle, r.axis);
+            rMatrix = glm::rotate(rMatrix, currAngle, upVector);
             rMatrix = glm::translate(rMatrix, -(r.point));
+
+            printf("%f\n", glm::distance(glm::vec3(rMatrix[3][0], rMatrix[3][1], rMatrix[3][2]), r.point));
             return rMatrix;
         }
         

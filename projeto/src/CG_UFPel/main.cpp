@@ -216,11 +216,11 @@ int main()
             t3 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_RELEASE && t4){
-            models[currentModel].Translate(glm::vec3(-2,0,-5), 2);
+            models[currentModel].Translate(glm::vec3(-2,1,-5), 2);
             t4 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_RELEASE && t5){
-            models[currentModel].BSplineCurve(glm::vec3(0,0,3), glm::vec3(-1,0,0), glm::vec3(1,1,-3), glm::vec3(-2,0,-5), 8);
+            models[currentModel].BSplineCurve(glm::vec3(0,0,3), glm::vec3(-1,0,0), glm::vec3(1,1,-3), glm::vec3(2,0,5), 8);
             t5 = false;
         }
 
@@ -243,7 +243,7 @@ int main()
             r3 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_M) == GLFW_RELEASE && r4){
-            models[currentModel].RotatePoint(glm::radians(700.0), 20, glm::vec3(-2,0,-5));
+            models[currentModel].RotatePoint(glm::radians(720.0), 6, glm::vec3(-2,1,-5));
             //models[currentModel].RotateAx(glm::radians(310.0), 2, glm::vec3(0.71, -0.45, 1.1));
             r4 = false;
         }
