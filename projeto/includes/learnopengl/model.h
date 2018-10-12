@@ -492,8 +492,20 @@ private:
         if(percentage >= 1){
             currBSpline.ended = true;
         }
-    
-        glm::vec3 v = BSpline(currBSpline, percentage);
+
+        glm::vec3 v;
+        if(percentage <= 0.333333333){
+            v = glm::catmullRom(b.p0, b.p0, b.p1, b.p2, 3 * percentage);    
+        }
+        else{
+            if(percentage <= 0.666666666){
+                v = glm::catmullRom(b.p0, b.p1, b.p2, b.p3, 3 * (percentage - 0.333333333));    
+            }
+            else {
+                v = glm::catmullRom(b.p1, b.p2, b.p3, b.p3, 3 * (percentage - 0.666666666));    
+            }
+        }
+
         //printf("%f %f %f\n", v.x, v.y, v.z);
         return v;
     }
