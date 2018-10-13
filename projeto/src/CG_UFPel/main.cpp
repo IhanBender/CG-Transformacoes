@@ -208,19 +208,19 @@ int main()
             t1 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_R) == GLFW_RELEASE && t2){
-            models[currentModel].BezierCurve(glm::vec3(0,0,3), glm::vec3(-1,0,0), glm::vec3(1,1,-3), glm::vec3(-2,0,-5), 8);
+            models[currentModel].BezierCurve(glm::vec3(0,0,3), glm::vec3(-1,0,0), glm::vec3(1,4,-3), glm::vec3(-4,0,-10), 8);
             t2 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE && t3){
-            models[currentModel].Translate(glm::vec3(1,1,-3), 0);
+            models[currentModel].Translate(glm::vec3(1,4,-3), 5);
             t3 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_RELEASE && t4){
-            models[currentModel].Translate(glm::vec3(-2,1,-5), 2);
+            models[currentModel].Translate(glm::vec3(-4,0,-10), 2);
             t4 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_RELEASE && t5){
-            models[currentModel].BSplineCurve(glm::vec3(0,0,3), glm::vec3(-1,0,0), glm::vec3(1,1,-3), glm::vec3(2,0,5), 8);
+            models[currentModel].BSplineCurve(glm::vec3(0,0,3), glm::vec3(-1,0,0), glm::vec3(1,4,-3), glm::vec3(-4,0,-10), 8);
             t5 = false;
         }
 
@@ -231,15 +231,15 @@ int main()
         if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS && models.size() > 0)   r4 = true;
 
         if (glfwGetKey(window, GLFW_KEY_V) == GLFW_RELEASE && r1){   
-            models[currentModel].RotateAx(glm::radians(720.0), 5, glm::vec3(0, 1, 0));
+            models[currentModel].RotateAx(glm::radians(720.0), 5, glm::vec3(2, 1, -0.9));
             r1 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_B) == GLFW_RELEASE && r2){
-            models[currentModel].RotateAx(glm::radians(100.0), 3, glm::vec3(1, 1, 0));
+            models[currentModel].RotateAx(glm::radians(180.0), 5, glm::vec3(1, 1, 0));
             r2 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_N) == GLFW_RELEASE && r3){
-            models[currentModel].RotateAx(glm::radians(60.0), 5, glm::vec3(0, 1, 0));
+            models[currentModel].RotateAx(glm::radians(90.0), 5, glm::vec3(0, 1, 0));
             r3 = false;
         }
         if (glfwGetKey(window, GLFW_KEY_M) == GLFW_RELEASE && r4){

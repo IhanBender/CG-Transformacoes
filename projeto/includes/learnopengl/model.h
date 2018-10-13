@@ -28,7 +28,6 @@ using namespace std;
 unsigned int TextureFromFile(const char *path, const string &directory, bool gamma = false);
 
 struct rotationAxis {
-    float inicialAngle;
     float finalAngle;
     float inicialTime;  // Time that the trasformation began
     float endingTime;   // Time for the transformation to end
@@ -96,6 +95,21 @@ public:
     // constructor, expects a filepath to a 3D model.
     Model(string const &path, bool gamma = false) : gammaCorrection(gamma)
     {
+        currPosition = glm::vec3(0);
+        // Scale
+        currScale = glm::vec3(1);
+        // Rotation
+        upVector = glm::vec3(0,1,0);
+        frontVector = glm::vec3(0,0,1);
+        requestedRotation = false;
+
+        // Shear
+        shearValue1 = 0;
+        shearValue2 = 0;
+        shearAxis = 0;
+        
+        currBezier.ended = true;
+        currBSpline.ended = true;
         currRotating.ended = true;
         currTranslating.ended = true;
         currScaling.ended = true;
@@ -137,7 +151,6 @@ public:
         rotationAxis r;
         r.endingTime = timeTaken;
         r.finalAngle = angle;    // Converts from degrees to radians
-        r.inicialAngle = 0;
         r.axis = axis;
         rotations.push(r);
     }
@@ -149,6 +162,8 @@ public:
         r.endingTime = timeTaken;
         r.point = point;
         rpRotations.push(r);
+
+        requestedRotation = true;
     }
 
     void BezierCurve(
@@ -231,31 +246,39 @@ public:
         // Scales, Translates, rotates and then shears, acording to the first elements of the queues
         currPosition = bSplinePosition();
         currPosition = bezierPosition();
+        currPosition = translateVector();
         glm::mat4 transform(1.0);
-        glm::mat4 rotationRP = roundPointRotationMatrix();
-        glm::mat4 rotation = rotationData();
-        glm::mat4 translate = glm::translate(transform, translateVector());
-        glm::mat4 scale = glm::scale(transform, scaleVector());
-        glm::mat4 shear = shearMatrix(transform);
+    
+        glm::mat4 translate = glm::translate(transform, currPosition);
+        glm::mat4 shear = shearMatrix(translate);
+        glm::mat4 scale = glm::scale(shear, scaleVector());
 
-        //return rotationRP;
-        return translate * shear * rotationRP * rotation * scale;
+        glm::mat4 rotationMatrix;
+        rotationMatrix = rotationData();
+        if(requestedRotation || !currRPRotation.ended){
+            requestedRotation = false;
+            rotationMatrix = roundPointRotationMatrix();
+        }
+
+        return scale * rotationMatrix;
     }
     
 
 private:
     // Postion
-    glm::vec3 currPosition = glm::vec3(0);
+    glm::vec3 currPosition;
     // Scale
-    glm::vec3 currScale = glm::vec3(1.0);
+    glm::vec3 currScale;
     // Rotation
-    glm::vec3 upVector = glm::vec3(0,1,0);
-    glm::vec3 frontVector = glm::vec3(0,0,1);
+    glm::vec3 upVector;
+    glm::vec3 frontVector;
+    bool requestedRotation;
+    
     //glm::mat4 rotationMatrix;
     // Shear
-    float shearValue1 = 0;
-    float shearValue2 = 0;
-    int shearAxis = 0;
+    float shearValue1;
+    float shearValue2;
+    int shearAxis;
     // Time
     float currTime;
 
@@ -330,7 +353,7 @@ private:
                 glm::mat4 sMatrix(1);
                 sMatrix[(shearAxis + 1) % 3][shearAxis] = this->shearValue1;
                 sMatrix[(shearAxis + 2) % 3][shearAxis] = this->shearValue2;
-                return sMatrix * transform;
+                return transform * sMatrix;
             }
         }
 
@@ -349,43 +372,71 @@ private:
         glm::mat4 sMatrix(1);
         sMatrix[(shearAxis + 1) % 3][shearAxis] = this->shearValue1;
         sMatrix[(shearAxis + 2) % 3][shearAxis] = this->shearValue2;
-        return sMatrix * transform;
+        return transform * sMatrix;
 
+    }
+
+
+    glm::mat4 myLookAt(glm::vec3 up, glm::vec3 front){
+        glm::mat4 rotMatrix = glm::mat4(1);
+        glm::vec4 rightVec = glm::vec4(glm::normalize(glm::cross(front, up)), 0);
+        rotMatrix[0][0] = rightVec.x;
+        rotMatrix[0][1] = rightVec.y;
+        rotMatrix[0][2] = rightVec.z;
+        rotMatrix[1][0] = up.x;
+        rotMatrix[1][1] = up.y;
+        rotMatrix[1][2] = up.z;
+        rotMatrix[2][0] = front.x;
+        rotMatrix[2][1] = front.y;
+        rotMatrix[2][2] = front.z;
+
+        return rotMatrix;
     }
 
     glm::mat4 rotationData(){
 
         if(currRotating.ended){
-
             if(!rotations.empty()){
                 currRotating = rotations.front();
-                currRotating.ended = false;
-                currRotating.inicialAngle = 0;                
+                currRotating.ended = false;   
                 currRotating.inicialTime = currTime;
                 currRotating.endingTime += currTime;
-
                 rotations.pop(); 
             }
             else {
-                return glm::rotate(glm::angle(glm::vec3(0,0,1), frontVector), upVector);
+                return myLookAt(upVector, frontVector);
             }
         }
 
-        float currAngle;
-        rotationAxis r = currRotating;
-        float percentage = (this->currTime - r.inicialTime) / (r.endingTime - r.inicialTime);
-        glm::mat4 currentMatrix = glm::rotate(glm::angle(glm::vec3(0,0,1), frontVector), upVector);
-        if(percentage >= 1){
-            currRotating.ended = true;
-            //glm::vec3 newFrontVector = r.
-            return glm::rotate(currentMatrix, r.finalAngle, currRotating.axis);
-        }
-        else {
-            currAngle = r.inicialAngle + percentage * (r.finalAngle - r.inicialAngle);
+        glm::mat4 rMatrix = myLookAt(upVector, frontVector);
+        rotationAxis rt = currRotating;
+        float percentage = (currTime - rt.inicialTime) / (rt.endingTime - rt.inicialTime);
+        float angle;
+        
+        glm::mat4 rotate;
+        if(percentage < 1){
+            angle = rt.finalAngle * percentage;
+            rotate = glm::rotate(glm::mat4(1), angle, rt.axis);
+            return rotate * rMatrix;
         }
 
-        glm::mat4 rMatrix = glm::rotate(currentMatrix, currAngle, currRotating.axis);
-        return rMatrix;
+        currRotating.ended = true;
+        angle = rt.finalAngle;
+        rotate = glm::rotate(glm::mat4(1), angle, rt.axis);
+        
+        glm::vec4 newPosition = glm::vec4(currPosition, 1);
+        newPosition = newPosition * rotate;
+        glm::vec4 newFront = glm::vec4((currPosition + frontVector), 1);
+        newFront = newFront * rotate;
+        glm::vec4 newUp = glm::vec4((currPosition + upVector), 1);
+        newUp = newUp * rotate;
+
+        currPosition = glm::vec3(newPosition.x, newPosition.y, newPosition.z);
+        frontVector = glm::vec3(newFront.x, newFront.y, newFront.z) - currPosition;
+        upVector = glm::vec3(newUp.x, newUp.y, newUp.z) - currPosition;
+
+        return myLookAt(upVector, frontVector); 
+
     }
 
     glm::vec3 scaleVector(){
@@ -437,10 +488,6 @@ private:
                 }
                 
                 frontVector = newFrontVector;
-                printf("%f %f %f\n", currRPRotation.point.x, currRPRotation.point.y, currRPRotation.point.z);
-                printf("%f %f %f\n", currPosition.x, currPosition.y, currPosition.z);
-                printf("%f %f %f\n", upVector.x, upVector.y, upVector.z);
-                printf("%f %f %f\n", frontVector.x, frontVector.y, frontVector.z);
 
                 currRPRotation.inicialTime = currTime;
                 currRPRotation.endingTime += currTime;
@@ -462,8 +509,9 @@ private:
             rMatrix = glm::rotate(rMatrix, currAngle, upVector);
             rMatrix = glm::translate(rMatrix, -(r.point));
 
+            glm::vec4 auxPosition = glm::vec4(currPosition, 1) * rMatrix;
+            currPosition = glm::vec3(auxPosition.x, auxPosition.y, auxPosition.z);
             frontVector = glm::normalize(currRPRotation.point - currPosition);
-            currPosition = glm::vec3(rMatrix[3][0], rMatrix[3][1], rMatrix[3][2]);
             
             return rMatrix;
         }
@@ -473,31 +521,9 @@ private:
             rMatrix = glm::rotate(rMatrix, currAngle, upVector);
             rMatrix = glm::translate(rMatrix, -(r.point));
 
-            printf("%f\n", glm::distance(glm::vec3(rMatrix[3][0], rMatrix[3][1], rMatrix[3][2]), r.point));
             return rMatrix;
         }
         
-    }
-
-    // 
-    float B0(float u){
-        return  float(pow(u - 1, 3) / 6.0);
-    }
-
-    float B1(float u){
-        return float((3 * pow(u, 3) - 6 * pow(u, 2) + 4) / 6.0);
-    }
-
-    float B2(float u){
-        return float((-3 * pow(u, 3) + 3 * pow(u, 2) + 3 * u + 1) / 6.0);
-    }
-
-    float B3(float u){
-        return float(pow(u, 3) / 6.0);
-    }
-
-    glm::vec3 BSpline(spline b, float u){
-       return B0(u) * b.p0 + B1(u) * b.p1 + B2(u) * b.p2 + B3(u) * b.p3;
     }
 
     glm::vec3 bSplinePosition(){
@@ -518,11 +544,13 @@ private:
         float percentage = (this->currTime - b.inicialTime) / (b.time - b.inicialTime);
         if(percentage >= 1){
             currBSpline.ended = true;
+            currPosition = b.p3;
+            return currPosition;
         }
 
         glm::vec3 v;
         if(percentage <= 0.333333333){
-            v = glm::catmullRom(b.p0, b.p0, b.p1, b.p2, 3 * percentage);    
+            v = glm::catmullRom(b.p0, b.p0, b.p1, b.p2, 3 * percentage); 
         }
         else{
             if(percentage <= 0.666666666){
@@ -565,7 +593,8 @@ private:
         float percentage = (this->currTime - b.inicialTime) / (b.time - b.inicialTime);
         if(percentage >= 1){
             currBezier.ended = true;
-            return currBezier.p3;
+            currPosition = currBezier.p3;
+            return currPosition;
         }
         else {
             glm::vec3 v = Bezier(currBezier, percentage);
