@@ -258,6 +258,7 @@ public:
         if(requestedRotation || !currRPRotation.ended){
             requestedRotation = false;
             rotationMatrix = roundPointRotationMatrix();
+            return rotationMatrix * scale;
         }
 
         return scale * rotationMatrix;
